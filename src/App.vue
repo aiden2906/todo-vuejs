@@ -2,10 +2,11 @@
   <div id="app" class="container">
     <div class="group-col">
       <Container
-        @drop="onDrop"
+        @drop="(e)=>onCardDrop(items, e)"
         drag-class="opacity-ghost"
         drop-class="opacity-ghost-drop"
-        group-name="col"
+        group-name="group1"
+        :get-child-payload="(index) => items[index - 1]"
       >
         <div class="add-item">
           <input
@@ -28,11 +29,12 @@
           ></Item>
         </Draggable>
       </Container>
-      <!-- <Container
-        @drop="onDrop"
+      <Container
+        @drop="(e)=>onCardDrop(items2, e)"
         drag-class="opacity-ghost"
+        group-name="group1"
         drop-class="opacity-ghost-drop"
-        group-name="col"
+        :get-child-payload="(index) => items2[index - 1]"
       >
         <div class="add-item">
           <input
@@ -46,7 +48,7 @@
             <i class="fa fa-plus"></i>
           </button>
         </div>
-        <Draggable v-for="item in filterItem" :key="item.id">
+        <Draggable v-for="item in items2" :key="item.id">
           <Item
             :value="item"
             @change-status="(status) => changeItem(status, item.id)"
@@ -54,7 +56,7 @@
             :key="item.id"
           ></Item>
         </Draggable>
-      </Container> -->
+      </Container>
     </div>
     <button v-on:click="changeStatus('all')" class="btn btn-all">All</button>
     <button v-on:click="changeStatus('active')" class="btn btn-active">Active</button>
@@ -66,7 +68,6 @@
 <script>
 import Item from "./components/Item";
 import { Container, Draggable } from "vue-smooth-dnd";
-import { applyDrag } from "./utils/common";
 
 let id = 0;
 
@@ -77,6 +78,7 @@ export default {
       items: [],
       status: "all",
       newItem: "",
+      items2: [],
     };
   },
   created() {
@@ -84,7 +86,6 @@ export default {
   },
   computed: {
     filterItem() {
-      console.log("a");
       if (this.status === "all") {
         return this.items;
       }
@@ -95,22 +96,20 @@ export default {
     },
   },
   methods: {
-    onCardDrop(columnId, dropResult) {
-      if (dropResult.removedIndex !== null || dropResult.addedIndex !== null) {
-        const scene = Object.assign({}, this.scene);
-        const column = scene.children.filter((p) => p.id === columnId)[0];
-        const columnIndex = scene.children.indexOf(column);
+    onCardDrop(list, dropResult) {
+      console.log(dropResult);
+      const { removedIndex, addedIndex, payload } = dropResult;
 
-        const newColumn = Object.assign({}, column);
-        newColumn.children = applyDrag(newColumn.children, dropResult);
-        scene.children.splice(columnIndex, 1, newColumn);
-
-        this.scene = scene;
+      if (removedIndex != null) {
+        list.splice(removedIndex - 1, 1);
       }
-    },
-    onDrop(dropResult) {
-      this.items = applyDrag(this.items, dropResult);
-      localStorage.setItem("items", JSON.stringify(this.items));
+      if (addedIndex != null) {
+        list.splice(addedIndex - 1, 0, {
+          name: payload.name,
+          id: payload.id,
+          status: payload.status,
+        });
+      }
     },
     getData() {
       if (localStorage.getItem("items")) {
@@ -148,11 +147,6 @@ export default {
       this.items = [];
       localStorage.removeItem("items");
       localStorage.removeItem("id");
-    },
-    getCardPayload (columnId) {
-      return index => {
-        return this.scene.children.filter(p => p.id === columnId)[0].children[index]
-      }
     },
   },
   components: {
