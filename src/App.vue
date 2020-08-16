@@ -1,67 +1,59 @@
 <template>
   <div id="app" class="container">
+    <div class="add-item">
+      <input
+        class="input"
+        type="text"
+        v-model="newItem"
+        v-on:keyup.enter="addItem()"
+        placeholder="Add a to-do..."
+      />
+      <button v-on:click="addItem()" class="feature-icon">
+        <i class="fa fa-plus"></i>
+      </button>
+    </div>
     <div class="group-col">
       <Container
-        @drop="(e)=>onCardDrop(items, e)"
+        @drop="(e)=>onCardDrop(1, items, e)"
         drag-class="opacity-ghost"
         drop-class="opacity-ghost-drop"
         group-name="group1"
-        :get-child-payload="(index) => items[index - 1]"
+        :get-child-payload="(index) => items[index]"
+        class="col"
       >
-        <div class="add-item">
-          <input
-            class="input"
-            type="text"
-            v-model="newItem"
-            v-on:keyup.enter="addItem()"
-            placeholder="Add a to-do..."
-          />
-          <button v-on:click="addItem()" class="feature-icon">
-            <i class="fa fa-plus"></i>
-          </button>
-        </div>
-        <Draggable v-for="item in filterItem" :key="item.id">
+        <Draggable v-for="item in filterItems" :key="item.id">
           <Item
             :value="item"
-            @change-status="(status) => changeItem(status, item.id)"
-            @remove-item="(id)=>removeItem(id)"
+            @change-status="(status) => changeItem(1, status, item.id)"
+            @remove-item="(id)=>removeItem(1, id)"
             :key="item.id"
           ></Item>
         </Draggable>
       </Container>
       <Container
-        @drop="(e)=>onCardDrop(items2, e)"
+        @drop="(e)=>onCardDrop(2, items2, e)"
         drag-class="opacity-ghost"
         group-name="group1"
         drop-class="opacity-ghost-drop"
-        :get-child-payload="(index) => items2[index - 1]"
+        :get-child-payload="(index) => items2[index]"
+        class="col"
       >
-        <div class="add-item">
-          <input
-            class="input"
-            type="text"
-            v-model="newItem"
-            v-on:keyup.enter="addItem()"
-            placeholder="Add a to-do..."
-          />
-          <button v-on:click="addItem()" class="feature-icon">
-            <i class="fa fa-plus"></i>
-          </button>
-        </div>
-        <Draggable v-for="item in items2" :key="item.id">
+        <Draggable v-for="item in filterItems2" :key="item.id">
           <Item
             :value="item"
-            @change-status="(status) => changeItem(status, item.id)"
-            @remove-item="(id)=>removeItem(id)"
+            @change-status="(status) => changeItem(2, status, item.id)"
+            @remove-item="(id)=>removeItem(2, id)"
             :key="item.id"
           ></Item>
         </Draggable>
       </Container>
     </div>
-    <button v-on:click="changeStatus('all')" class="btn btn-all">All</button>
-    <button v-on:click="changeStatus('active')" class="btn btn-active">Active</button>
-    <button v-on:click="changeStatus('complete')" class="btn btn-complete">Complete</button>
-    <button v-on:click="clearAll" class="btn btn-clear">Clear all</button>
+    <div class="group-btn">
+      <button v-on:click="changeStatus('all')" class="btn btn-all">All</button>
+      <button v-on:click="changeStatus('active')" class="btn btn-active">Active</button>
+      <button v-on:click="changeStatus('complete')" class="btn btn-complete">Complete</button>
+      <button v-on:click="clearAll" class="btn btn-clear">Clear all</button>
+    </div>
   </div>
 </template>
 
@@ -85,7 +77,7 @@ export default {
     this.getData();
   },
   computed: {
-    filterItem() {
+    filterItems() {
       if (this.status === "all") {
         return this.items;
       }
@@ -94,26 +86,40 @@ export default {
       }
       return this.items.filter((i) => i.status === true);
     },
+    filterItems2(){
+      if (this.status === "all") {
+        return this.items2;
+      }
+      if (this.status === "active") {
+        return this.items2.filter((i) => i.status === false);
+      }
+      return this.items2.filter((i) => i.status === true);
+    }
   },
   methods: {
-    onCardDrop(list, dropResult) {
-      console.log(dropResult);
+    onCardDrop(colId, list, dropResult) {
       const { removedIndex, addedIndex, payload } = dropResult;
-
+      console.log(dropResult);
       if (removedIndex != null) {
-        list.splice(removedIndex - 1, 1);
+        list.splice(removedIndex , 1);
       }
       if (addedIndex != null) {
-        list.splice(addedIndex - 1, 0, {
+        list.splice(addedIndex, 0, {
           name: payload.name,
           id: payload.id,
           status: payload.status,
         });
       }
+      if (colId === 1) {
+        localStorage.setItem("items", JSON.stringify(list));
+      } else {
+        localStorage.setItem("items2", JSON.stringify(list));
+      }
     },
     getData() {
       if (localStorage.getItem("items")) {
         this.items = JSON.parse(localStorage.getItem("items")) || [];
+        this.items2 = JSON.parse(localStorage.getItem("items2")) || [];
         id = JSON.parse(localStorage.getItem("id"));
       }
     },
@@ -128,24 +134,38 @@ export default {
       localStorage.setItem("id", JSON.stringify(id));
       this.newItem = "";
     },
-    changeItem(status, id) {
-      const index = this.items.findIndex((i) => i.id === id);
-      this.$set(this.items, index, { ...this.items[index], status });
+    changeItem(colId, status, itemId) {
+      if (colId == 1) {
+        const index = this.items.findIndex((i) => i.id === itemId);
+        this.$set(this.items, index, { ...this.items[index], status });
+      } else {
+        const index = this.items2.findIndex((i) => i.id === itemId);
+        this.$set(this.items2, index, { ...this.items2[index], status });
+      }
       localStorage.setItem("items", JSON.stringify(this.items));
-      localStorage.setItem("id", JSON.stringify(id));
+      localStorage.setItem("items2", JSON.stringify(this.items2));
+      localStorage.setItem("id", id);
     },
     changeStatus(status) {
       this.status = status;
     },
-    removeItem(id) {
-      const index = this.items.findIndex((i) => i.id === id);
-      this.items.splice(index, 1);
+    removeItem(colId, id) {
+      if (colId === 1) {
+        const index = this.items.findIndex((i) => i.id === id);
+        this.items.splice(index, 1);
+      } else {
+        const index = this.items2.findIndex((i) => i.id === id);
+        this.items2.splice(index, 1);
+      }
       localStorage.setItem("items", JSON.stringify(this.items));
+      localStorage.setItem("items2", JSON.stringify(this.items2));
       localStorage.setItem("id", JSON.stringify(id));
     },
     clearAll() {
       this.items = [];
+      this.items2 = [];
       localStorage.removeItem("items");
+      localStorage.removeItem("items2");
       localStorage.removeItem("id");
     },
   },
@@ -163,7 +183,6 @@ export default {
   font-size: 1rem;
   color: #333;
   width: 100%;
-  max-width: 480px;
 }
 
 body {
@@ -181,9 +200,6 @@ body {
   width: calc(100% - 20px);
   min-height: calc(100% - 20px);
 }
-
-/* .group-col {
-} */
 
 .container .add-item input {
   font-family: cursive, Helvetica, sans-serif;
@@ -359,5 +375,28 @@ body {
 
 .dragging {
   background-color: yellow;
+}
+
+.group-col {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  justify-content: space-around;
+  margin-top: 20px;
+}
+
+.group-col .col {
+  width: 40%;
+  padding: 10px;
+  border-radius: 10px;
+  min-height: 500px;
+  background-color: #b8c9ad;
+  border: 2px solid #738a65;
+}
+
+.group-btn {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
 }
 </style>
